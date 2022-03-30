@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  tika:
+    build:
+      context: ./tika
+    ports:
+      - "9998:9998"
+    deploy:
+      restart_policy:
+        condition: always
+
