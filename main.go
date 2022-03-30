@@ -10,9 +10,13 @@ import (
 	"strings"
 
 	"github.com/google/go-tika/tika"
+    _ "github.com/mattn/go-sqlite3"
+
+	"github.com/cmars/mapachon/ent"
 )
 
 func main() {
+	ctx := context.Background()
 	var root string
 	var err error
 	if len(os.Args) > 1 {
@@ -24,8 +28,16 @@ func main() {
 		}
 	}
 	cl := tika.NewClient(&http.Client{}, "http://localhost:9998")
-	ctx := context.Background()
-	fs.WalkDir(os.DirFS(root), ".", func(path string, d fs.DirEntry, err error) error {
+	db, err := ent.Open("sqlite3", "test.db?_fk=1")//"file:ent?mode=memory&cache=shared&_fk=1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+    if err := db.Schema.Create(ctx); err != nil {
+        log.Fatalf("failed creating schema resources: %v", err)
+    }
+
+	err = fs.WalkDir(os.DirFS(root), ".", func(path string, d fs.DirEntry, err error) error {
 		path = filepath.Join(root, path)
 		if err != nil {
 			log.Fatal(err)
@@ -56,6 +68,9 @@ func main() {
 		// TODO: read the file and archive contents / metadata
 		return nil
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func keys[T any](m map[string]T) []string {
