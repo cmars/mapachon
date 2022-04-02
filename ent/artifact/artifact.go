@@ -13,10 +13,19 @@ const (
 	FieldArchivePath = "archive_path"
 	// FieldFileType holds the string denoting the file_type field in the database.
 	FieldFileType = "file_type"
-	// FieldParsedContent holds the string denoting the parsed_content field in the database.
-	FieldParsedContent = "parsed_content"
+	// FieldContent holds the string denoting the content field in the database.
+	FieldContent = "content"
+	// EdgeMetadata holds the string denoting the metadata edge name in mutations.
+	EdgeMetadata = "metadata"
 	// Table holds the table name of the artifact in the database.
 	Table = "artifacts"
+	// MetadataTable is the table that holds the metadata relation/edge.
+	MetadataTable = "metadata"
+	// MetadataInverseTable is the table name for the Metadata entity.
+	// It exists in this package in order to avoid circular dependency with the "metadata" package.
+	MetadataInverseTable = "metadata"
+	// MetadataColumn is the table column denoting the metadata relation/edge.
+	MetadataColumn = "artifact_metadata"
 )
 
 // Columns holds all SQL columns for artifact fields.
@@ -25,7 +34,7 @@ var Columns = []string{
 	FieldFilePath,
 	FieldArchivePath,
 	FieldFileType,
-	FieldParsedContent,
+	FieldContent,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

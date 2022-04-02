@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/cmars/mapachon/ent/artifact"
+	"github.com/cmars/mapachon/ent/metadata"
 	"github.com/cmars/mapachon/ent/predicate"
 )
 
@@ -24,6 +26,8 @@ type ArtifactQuery struct {
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Artifact
+	// eager-loading edges.
+	withMetadata *MetadataQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -58,6 +62,28 @@ func (aq *ArtifactQuery) Unique(unique bool) *ArtifactQuery {
 func (aq *ArtifactQuery) Order(o ...OrderFunc) *ArtifactQuery {
 	aq.order = append(aq.order, o...)
 	return aq
+}
+
+// QueryMetadata chains the current query on the "metadata" edge.
+func (aq *ArtifactQuery) QueryMetadata() *MetadataQuery {
+	query := &MetadataQuery{config: aq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := aq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := aq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(artifact.Table, artifact.FieldID, selector),
+			sqlgraph.To(metadata.Table, metadata.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, artifact.MetadataTable, artifact.MetadataColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(aq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Artifact entity from the query.
@@ -236,16 +262,28 @@ func (aq *ArtifactQuery) Clone() *ArtifactQuery {
 		return nil
 	}
 	return &ArtifactQuery{
-		config:     aq.config,
-		limit:      aq.limit,
-		offset:     aq.offset,
-		order:      append([]OrderFunc{}, aq.order...),
-		predicates: append([]predicate.Artifact{}, aq.predicates...),
+		config:       aq.config,
+		limit:        aq.limit,
+		offset:       aq.offset,
+		order:        append([]OrderFunc{}, aq.order...),
+		predicates:   append([]predicate.Artifact{}, aq.predicates...),
+		withMetadata: aq.withMetadata.Clone(),
 		// clone intermediate query.
 		sql:    aq.sql.Clone(),
 		path:   aq.path,
 		unique: aq.unique,
 	}
+}
+
+// WithMetadata tells the query-builder to eager-load the nodes that are connected to
+// the "metadata" edge. The optional arguments are used to configure the query builder of the edge.
+func (aq *ArtifactQuery) WithMetadata(opts ...func(*MetadataQuery)) *ArtifactQuery {
+	query := &MetadataQuery{config: aq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	aq.withMetadata = query
+	return aq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -311,8 +349,11 @@ func (aq *ArtifactQuery) prepareQuery(ctx context.Context) error {
 
 func (aq *ArtifactQuery) sqlAll(ctx context.Context) ([]*Artifact, error) {
 	var (
-		nodes = []*Artifact{}
-		_spec = aq.querySpec()
+		nodes       = []*Artifact{}
+		_spec       = aq.querySpec()
+		loadedTypes = [1]bool{
+			aq.withMetadata != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		node := &Artifact{config: aq.config}
@@ -324,6 +365,7 @@ func (aq *ArtifactQuery) sqlAll(ctx context.Context) ([]*Artifact, error) {
 			return fmt.Errorf("ent: Assign called without calling ScanValues")
 		}
 		node := nodes[len(nodes)-1]
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	if err := sqlgraph.QueryNodes(ctx, aq.driver, _spec); err != nil {
@@ -332,6 +374,36 @@ func (aq *ArtifactQuery) sqlAll(ctx context.Context) ([]*Artifact, error) {
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+
+	if query := aq.withMetadata; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Artifact)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Metadata = []*Metadata{}
+		}
+		query.withFKs = true
+		query.Where(predicate.Metadata(func(s *sql.Selector) {
+			s.Where(sql.InValues(artifact.MetadataColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.artifact_metadata
+			if fk == nil {
+				return nil, fmt.Errorf(`foreign-key "artifact_metadata" is nil for node %v`, n.ID)
+			}
+			node, ok := nodeids[*fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "artifact_metadata" returned %v for node %v`, *fk, n.ID)
+			}
+			node.Edges.Metadata = append(node.Edges.Metadata, n)
+		}
+	}
+
 	return nodes, nil
 }
 

@@ -4,6 +4,7 @@ package artifact
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/cmars/mapachon/ent/predicate"
 )
 
@@ -111,10 +112,10 @@ func FileType(v string) predicate.Artifact {
 	})
 }
 
-// ParsedContent applies equality check predicate on the "parsed_content" field. It's identical to ParsedContentEQ.
-func ParsedContent(v string) predicate.Artifact {
+// Content applies equality check predicate on the "content" field. It's identical to ContentEQ.
+func Content(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldParsedContent), v))
+		s.Where(sql.EQ(s.C(FieldContent), v))
 	})
 }
 
@@ -465,22 +466,22 @@ func FileTypeContainsFold(v string) predicate.Artifact {
 	})
 }
 
-// ParsedContentEQ applies the EQ predicate on the "parsed_content" field.
-func ParsedContentEQ(v string) predicate.Artifact {
+// ContentEQ applies the EQ predicate on the "content" field.
+func ContentEQ(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldParsedContent), v))
+		s.Where(sql.EQ(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentNEQ applies the NEQ predicate on the "parsed_content" field.
-func ParsedContentNEQ(v string) predicate.Artifact {
+// ContentNEQ applies the NEQ predicate on the "content" field.
+func ContentNEQ(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldParsedContent), v))
+		s.Where(sql.NEQ(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentIn applies the In predicate on the "parsed_content" field.
-func ParsedContentIn(vs ...string) predicate.Artifact {
+// ContentIn applies the In predicate on the "content" field.
+func ContentIn(vs ...string) predicate.Artifact {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -492,12 +493,12 @@ func ParsedContentIn(vs ...string) predicate.Artifact {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.In(s.C(FieldParsedContent), v...))
+		s.Where(sql.In(s.C(FieldContent), v...))
 	})
 }
 
-// ParsedContentNotIn applies the NotIn predicate on the "parsed_content" field.
-func ParsedContentNotIn(vs ...string) predicate.Artifact {
+// ContentNotIn applies the NotIn predicate on the "content" field.
+func ContentNotIn(vs ...string) predicate.Artifact {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -509,70 +510,98 @@ func ParsedContentNotIn(vs ...string) predicate.Artifact {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.NotIn(s.C(FieldParsedContent), v...))
+		s.Where(sql.NotIn(s.C(FieldContent), v...))
 	})
 }
 
-// ParsedContentGT applies the GT predicate on the "parsed_content" field.
-func ParsedContentGT(v string) predicate.Artifact {
+// ContentGT applies the GT predicate on the "content" field.
+func ContentGT(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldParsedContent), v))
+		s.Where(sql.GT(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentGTE applies the GTE predicate on the "parsed_content" field.
-func ParsedContentGTE(v string) predicate.Artifact {
+// ContentGTE applies the GTE predicate on the "content" field.
+func ContentGTE(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldParsedContent), v))
+		s.Where(sql.GTE(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentLT applies the LT predicate on the "parsed_content" field.
-func ParsedContentLT(v string) predicate.Artifact {
+// ContentLT applies the LT predicate on the "content" field.
+func ContentLT(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldParsedContent), v))
+		s.Where(sql.LT(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentLTE applies the LTE predicate on the "parsed_content" field.
-func ParsedContentLTE(v string) predicate.Artifact {
+// ContentLTE applies the LTE predicate on the "content" field.
+func ContentLTE(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldParsedContent), v))
+		s.Where(sql.LTE(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentContains applies the Contains predicate on the "parsed_content" field.
-func ParsedContentContains(v string) predicate.Artifact {
+// ContentContains applies the Contains predicate on the "content" field.
+func ContentContains(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldParsedContent), v))
+		s.Where(sql.Contains(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentHasPrefix applies the HasPrefix predicate on the "parsed_content" field.
-func ParsedContentHasPrefix(v string) predicate.Artifact {
+// ContentHasPrefix applies the HasPrefix predicate on the "content" field.
+func ContentHasPrefix(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldParsedContent), v))
+		s.Where(sql.HasPrefix(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentHasSuffix applies the HasSuffix predicate on the "parsed_content" field.
-func ParsedContentHasSuffix(v string) predicate.Artifact {
+// ContentHasSuffix applies the HasSuffix predicate on the "content" field.
+func ContentHasSuffix(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldParsedContent), v))
+		s.Where(sql.HasSuffix(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentEqualFold applies the EqualFold predicate on the "parsed_content" field.
-func ParsedContentEqualFold(v string) predicate.Artifact {
+// ContentEqualFold applies the EqualFold predicate on the "content" field.
+func ContentEqualFold(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldParsedContent), v))
+		s.Where(sql.EqualFold(s.C(FieldContent), v))
 	})
 }
 
-// ParsedContentContainsFold applies the ContainsFold predicate on the "parsed_content" field.
-func ParsedContentContainsFold(v string) predicate.Artifact {
+// ContentContainsFold applies the ContainsFold predicate on the "content" field.
+func ContentContainsFold(v string) predicate.Artifact {
 	return predicate.Artifact(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldParsedContent), v))
+		s.Where(sql.ContainsFold(s.C(FieldContent), v))
+	})
+}
+
+// HasMetadata applies the HasEdge predicate on the "metadata" edge.
+func HasMetadata() predicate.Artifact {
+	return predicate.Artifact(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MetadataTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MetadataTable, MetadataColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMetadataWith applies the HasEdge predicate on the "metadata" edge with a given conditions (other predicates).
+func HasMetadataWith(preds ...predicate.Metadata) predicate.Artifact {
+	return predicate.Artifact(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(MetadataInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MetadataTable, MetadataColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
 	})
 }
 

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/cmars/mapachon/ent/artifact"
+	"github.com/cmars/mapachon/ent/metadata"
 	"github.com/cmars/mapachon/ent/predicate"
 
 	"entgo.io/ent"
@@ -24,22 +25,26 @@ const (
 
 	// Node types.
 	TypeArtifact = "Artifact"
+	TypeMetadata = "Metadata"
 )
 
 // ArtifactMutation represents an operation that mutates the Artifact nodes in the graph.
 type ArtifactMutation struct {
 	config
-	op             Op
-	typ            string
-	id             *int
-	file_path      *string
-	archive_path   *string
-	file_type      *string
-	parsed_content *string
-	clearedFields  map[string]struct{}
-	done           bool
-	oldValue       func(context.Context) (*Artifact, error)
-	predicates     []predicate.Artifact
+	op              Op
+	typ             string
+	id              *int
+	file_path       *string
+	archive_path    *string
+	file_type       *string
+	content         *string
+	clearedFields   map[string]struct{}
+	metadata        map[int]struct{}
+	removedmetadata map[int]struct{}
+	clearedmetadata bool
+	done            bool
+	oldValue        func(context.Context) (*Artifact, error)
+	predicates      []predicate.Artifact
 }
 
 var _ ent.Mutation = (*ArtifactMutation)(nil)
@@ -261,40 +266,94 @@ func (m *ArtifactMutation) ResetFileType() {
 	m.file_type = nil
 }
 
-// SetParsedContent sets the "parsed_content" field.
-func (m *ArtifactMutation) SetParsedContent(s string) {
-	m.parsed_content = &s
+// SetContent sets the "content" field.
+func (m *ArtifactMutation) SetContent(s string) {
+	m.content = &s
 }
 
-// ParsedContent returns the value of the "parsed_content" field in the mutation.
-func (m *ArtifactMutation) ParsedContent() (r string, exists bool) {
-	v := m.parsed_content
+// Content returns the value of the "content" field in the mutation.
+func (m *ArtifactMutation) Content() (r string, exists bool) {
+	v := m.content
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldParsedContent returns the old "parsed_content" field's value of the Artifact entity.
+// OldContent returns the old "content" field's value of the Artifact entity.
 // If the Artifact object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ArtifactMutation) OldParsedContent(ctx context.Context) (v string, err error) {
+func (m *ArtifactMutation) OldContent(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldParsedContent is only allowed on UpdateOne operations")
+		return v, errors.New("OldContent is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldParsedContent requires an ID field in the mutation")
+		return v, errors.New("OldContent requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldParsedContent: %w", err)
+		return v, fmt.Errorf("querying old value for OldContent: %w", err)
 	}
-	return oldValue.ParsedContent, nil
+	return oldValue.Content, nil
 }
 
-// ResetParsedContent resets all changes to the "parsed_content" field.
-func (m *ArtifactMutation) ResetParsedContent() {
-	m.parsed_content = nil
+// ResetContent resets all changes to the "content" field.
+func (m *ArtifactMutation) ResetContent() {
+	m.content = nil
+}
+
+// AddMetadatumIDs adds the "metadata" edge to the Metadata entity by ids.
+func (m *ArtifactMutation) AddMetadatumIDs(ids ...int) {
+	if m.metadata == nil {
+		m.metadata = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.metadata[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMetadata clears the "metadata" edge to the Metadata entity.
+func (m *ArtifactMutation) ClearMetadata() {
+	m.clearedmetadata = true
+}
+
+// MetadataCleared reports if the "metadata" edge to the Metadata entity was cleared.
+func (m *ArtifactMutation) MetadataCleared() bool {
+	return m.clearedmetadata
+}
+
+// RemoveMetadatumIDs removes the "metadata" edge to the Metadata entity by IDs.
+func (m *ArtifactMutation) RemoveMetadatumIDs(ids ...int) {
+	if m.removedmetadata == nil {
+		m.removedmetadata = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.metadata, ids[i])
+		m.removedmetadata[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMetadata returns the removed IDs of the "metadata" edge to the Metadata entity.
+func (m *ArtifactMutation) RemovedMetadataIDs() (ids []int) {
+	for id := range m.removedmetadata {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MetadataIDs returns the "metadata" edge IDs in the mutation.
+func (m *ArtifactMutation) MetadataIDs() (ids []int) {
+	for id := range m.metadata {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMetadata resets all changes to the "metadata" edge.
+func (m *ArtifactMutation) ResetMetadata() {
+	m.metadata = nil
+	m.clearedmetadata = false
+	m.removedmetadata = nil
 }
 
 // Where appends a list predicates to the ArtifactMutation builder.
@@ -326,8 +385,8 @@ func (m *ArtifactMutation) Fields() []string {
 	if m.file_type != nil {
 		fields = append(fields, artifact.FieldFileType)
 	}
-	if m.parsed_content != nil {
-		fields = append(fields, artifact.FieldParsedContent)
+	if m.content != nil {
+		fields = append(fields, artifact.FieldContent)
 	}
 	return fields
 }
@@ -343,8 +402,8 @@ func (m *ArtifactMutation) Field(name string) (ent.Value, bool) {
 		return m.ArchivePath()
 	case artifact.FieldFileType:
 		return m.FileType()
-	case artifact.FieldParsedContent:
-		return m.ParsedContent()
+	case artifact.FieldContent:
+		return m.Content()
 	}
 	return nil, false
 }
@@ -360,8 +419,8 @@ func (m *ArtifactMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldArchivePath(ctx)
 	case artifact.FieldFileType:
 		return m.OldFileType(ctx)
-	case artifact.FieldParsedContent:
-		return m.OldParsedContent(ctx)
+	case artifact.FieldContent:
+		return m.OldContent(ctx)
 	}
 	return nil, fmt.Errorf("unknown Artifact field %s", name)
 }
@@ -392,12 +451,12 @@ func (m *ArtifactMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFileType(v)
 		return nil
-	case artifact.FieldParsedContent:
+	case artifact.FieldContent:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetParsedContent(v)
+		m.SetContent(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Artifact field %s", name)
@@ -466,8 +525,8 @@ func (m *ArtifactMutation) ResetField(name string) error {
 	case artifact.FieldFileType:
 		m.ResetFileType()
 		return nil
-	case artifact.FieldParsedContent:
-		m.ResetParsedContent()
+	case artifact.FieldContent:
+		m.ResetContent()
 		return nil
 	}
 	return fmt.Errorf("unknown Artifact field %s", name)
@@ -475,48 +534,518 @@ func (m *ArtifactMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ArtifactMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.metadata != nil {
+		edges = append(edges, artifact.EdgeMetadata)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *ArtifactMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case artifact.EdgeMetadata:
+		ids := make([]ent.Value, 0, len(m.metadata))
+		for id := range m.metadata {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ArtifactMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.removedmetadata != nil {
+		edges = append(edges, artifact.EdgeMetadata)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *ArtifactMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case artifact.EdgeMetadata:
+		ids := make([]ent.Value, 0, len(m.removedmetadata))
+		for id := range m.removedmetadata {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ArtifactMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedmetadata {
+		edges = append(edges, artifact.EdgeMetadata)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *ArtifactMutation) EdgeCleared(name string) bool {
+	switch name {
+	case artifact.EdgeMetadata:
+		return m.clearedmetadata
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *ArtifactMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown Artifact unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *ArtifactMutation) ResetEdge(name string) error {
+	switch name {
+	case artifact.EdgeMetadata:
+		m.ResetMetadata()
+		return nil
+	}
 	return fmt.Errorf("unknown Artifact edge %s", name)
+}
+
+// MetadataMutation represents an operation that mutates the Metadata nodes in the graph.
+type MetadataMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	key             *string
+	value           *string
+	clearedFields   map[string]struct{}
+	artifact        *int
+	clearedartifact bool
+	done            bool
+	oldValue        func(context.Context) (*Metadata, error)
+	predicates      []predicate.Metadata
+}
+
+var _ ent.Mutation = (*MetadataMutation)(nil)
+
+// metadataOption allows management of the mutation configuration using functional options.
+type metadataOption func(*MetadataMutation)
+
+// newMetadataMutation creates new mutation for the Metadata entity.
+func newMetadataMutation(c config, op Op, opts ...metadataOption) *MetadataMutation {
+	m := &MetadataMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMetadata,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMetadataID sets the ID field of the mutation.
+func withMetadataID(id int) metadataOption {
+	return func(m *MetadataMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Metadata
+		)
+		m.oldValue = func(ctx context.Context) (*Metadata, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Metadata.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMetadata sets the old Metadata of the mutation.
+func withMetadata(node *Metadata) metadataOption {
+	return func(m *MetadataMutation) {
+		m.oldValue = func(context.Context) (*Metadata, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MetadataMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MetadataMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MetadataMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MetadataMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Metadata.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetKey sets the "key" field.
+func (m *MetadataMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *MetadataMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the Metadata entity.
+// If the Metadata object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MetadataMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *MetadataMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetValue sets the "value" field.
+func (m *MetadataMutation) SetValue(s string) {
+	m.value = &s
+}
+
+// Value returns the value of the "value" field in the mutation.
+func (m *MetadataMutation) Value() (r string, exists bool) {
+	v := m.value
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldValue returns the old "value" field's value of the Metadata entity.
+// If the Metadata object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MetadataMutation) OldValue(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldValue is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldValue requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValue: %w", err)
+	}
+	return oldValue.Value, nil
+}
+
+// ResetValue resets all changes to the "value" field.
+func (m *MetadataMutation) ResetValue() {
+	m.value = nil
+}
+
+// SetArtifactID sets the "artifact" edge to the Artifact entity by id.
+func (m *MetadataMutation) SetArtifactID(id int) {
+	m.artifact = &id
+}
+
+// ClearArtifact clears the "artifact" edge to the Artifact entity.
+func (m *MetadataMutation) ClearArtifact() {
+	m.clearedartifact = true
+}
+
+// ArtifactCleared reports if the "artifact" edge to the Artifact entity was cleared.
+func (m *MetadataMutation) ArtifactCleared() bool {
+	return m.clearedartifact
+}
+
+// ArtifactID returns the "artifact" edge ID in the mutation.
+func (m *MetadataMutation) ArtifactID() (id int, exists bool) {
+	if m.artifact != nil {
+		return *m.artifact, true
+	}
+	return
+}
+
+// ArtifactIDs returns the "artifact" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ArtifactID instead. It exists only for internal usage by the builders.
+func (m *MetadataMutation) ArtifactIDs() (ids []int) {
+	if id := m.artifact; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetArtifact resets all changes to the "artifact" edge.
+func (m *MetadataMutation) ResetArtifact() {
+	m.artifact = nil
+	m.clearedartifact = false
+}
+
+// Where appends a list predicates to the MetadataMutation builder.
+func (m *MetadataMutation) Where(ps ...predicate.Metadata) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// Op returns the operation name.
+func (m *MetadataMutation) Op() Op {
+	return m.op
+}
+
+// Type returns the node type of this mutation (Metadata).
+func (m *MetadataMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MetadataMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.key != nil {
+		fields = append(fields, metadata.FieldKey)
+	}
+	if m.value != nil {
+		fields = append(fields, metadata.FieldValue)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MetadataMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case metadata.FieldKey:
+		return m.Key()
+	case metadata.FieldValue:
+		return m.Value()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MetadataMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case metadata.FieldKey:
+		return m.OldKey(ctx)
+	case metadata.FieldValue:
+		return m.OldValue(ctx)
+	}
+	return nil, fmt.Errorf("unknown Metadata field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MetadataMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case metadata.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case metadata.FieldValue:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetValue(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Metadata field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MetadataMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MetadataMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MetadataMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Metadata numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MetadataMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MetadataMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MetadataMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Metadata nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MetadataMutation) ResetField(name string) error {
+	switch name {
+	case metadata.FieldKey:
+		m.ResetKey()
+		return nil
+	case metadata.FieldValue:
+		m.ResetValue()
+		return nil
+	}
+	return fmt.Errorf("unknown Metadata field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MetadataMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.artifact != nil {
+		edges = append(edges, metadata.EdgeArtifact)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MetadataMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case metadata.EdgeArtifact:
+		if id := m.artifact; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MetadataMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MetadataMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MetadataMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedartifact {
+		edges = append(edges, metadata.EdgeArtifact)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MetadataMutation) EdgeCleared(name string) bool {
+	switch name {
+	case metadata.EdgeArtifact:
+		return m.clearedartifact
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MetadataMutation) ClearEdge(name string) error {
+	switch name {
+	case metadata.EdgeArtifact:
+		m.ClearArtifact()
+		return nil
+	}
+	return fmt.Errorf("unknown Metadata unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MetadataMutation) ResetEdge(name string) error {
+	switch name {
+	case metadata.EdgeArtifact:
+		m.ResetArtifact()
+		return nil
+	}
+	return fmt.Errorf("unknown Metadata edge %s", name)
 }

@@ -14,19 +14,56 @@ var (
 		{Name: "file_path", Type: field.TypeString},
 		{Name: "archive_path", Type: field.TypeString, Nullable: true},
 		{Name: "file_type", Type: field.TypeString},
-		{Name: "parsed_content", Type: field.TypeString, SchemaType: map[string]string{"sqlite3": "TEXT"}},
+		{Name: "content", Type: field.TypeString, SchemaType: map[string]string{"sqlite3": "TEXT"}},
 	}
 	// ArtifactsTable holds the schema information for the "artifacts" table.
 	ArtifactsTable = &schema.Table{
 		Name:       "artifacts",
 		Columns:    ArtifactsColumns,
 		PrimaryKey: []*schema.Column{ArtifactsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "artifact_file_path_archive_path",
+				Unique:  false,
+				Columns: []*schema.Column{ArtifactsColumns[1], ArtifactsColumns[2]},
+			},
+		},
+	}
+	// MetadataColumns holds the columns for the "metadata" table.
+	MetadataColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "key", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString},
+		{Name: "artifact_metadata", Type: field.TypeInt, Nullable: true},
+	}
+	// MetadataTable holds the schema information for the "metadata" table.
+	MetadataTable = &schema.Table{
+		Name:       "metadata",
+		Columns:    MetadataColumns,
+		PrimaryKey: []*schema.Column{MetadataColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "metadata_artifacts_metadata",
+				Columns:    []*schema.Column{MetadataColumns[3]},
+				RefColumns: []*schema.Column{ArtifactsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "metadata_key_artifact_metadata",
+				Unique:  true,
+				Columns: []*schema.Column{MetadataColumns[1], MetadataColumns[3]},
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ArtifactsTable,
+		MetadataTable,
 	}
 )
 
 func init() {
+	MetadataTable.ForeignKeys[0].RefTable = ArtifactsTable
 }

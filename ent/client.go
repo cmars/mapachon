@@ -10,9 +10,11 @@ import (
 	"github.com/cmars/mapachon/ent/migrate"
 
 	"github.com/cmars/mapachon/ent/artifact"
+	"github.com/cmars/mapachon/ent/metadata"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // Client is the client that holds all ent builders.
@@ -22,6 +24,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// Artifact is the client for interacting with the Artifact builders.
 	Artifact *ArtifactClient
+	// Metadata is the client for interacting with the Metadata builders.
+	Metadata *MetadataClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -36,6 +40,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Artifact = NewArtifactClient(c.config)
+	c.Metadata = NewMetadataClient(c.config)
 }
 
 // Open opens a database/sql.DB specified by the driver name and
@@ -70,6 +75,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ctx:      ctx,
 		config:   cfg,
 		Artifact: NewArtifactClient(cfg),
+		Metadata: NewMetadataClient(cfg),
 	}, nil
 }
 
@@ -90,6 +96,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ctx:      ctx,
 		config:   cfg,
 		Artifact: NewArtifactClient(cfg),
+		Metadata: NewMetadataClient(cfg),
 	}, nil
 }
 
@@ -120,6 +127,7 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Artifact.Use(hooks...)
+	c.Metadata.Use(hooks...)
 }
 
 // ArtifactClient is a client for the Artifact schema.
@@ -207,7 +215,129 @@ func (c *ArtifactClient) GetX(ctx context.Context, id int) *Artifact {
 	return obj
 }
 
+// QueryMetadata queries the metadata edge of a Artifact.
+func (c *ArtifactClient) QueryMetadata(a *Artifact) *MetadataQuery {
+	query := &MetadataQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := a.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(artifact.Table, artifact.FieldID, id),
+			sqlgraph.To(metadata.Table, metadata.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, artifact.MetadataTable, artifact.MetadataColumn),
+		)
+		fromV = sqlgraph.Neighbors(a.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ArtifactClient) Hooks() []Hook {
 	return c.hooks.Artifact
+}
+
+// MetadataClient is a client for the Metadata schema.
+type MetadataClient struct {
+	config
+}
+
+// NewMetadataClient returns a client for the Metadata from the given config.
+func NewMetadataClient(c config) *MetadataClient {
+	return &MetadataClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `metadata.Hooks(f(g(h())))`.
+func (c *MetadataClient) Use(hooks ...Hook) {
+	c.hooks.Metadata = append(c.hooks.Metadata, hooks...)
+}
+
+// Create returns a create builder for Metadata.
+func (c *MetadataClient) Create() *MetadataCreate {
+	mutation := newMetadataMutation(c.config, OpCreate)
+	return &MetadataCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Metadata entities.
+func (c *MetadataClient) CreateBulk(builders ...*MetadataCreate) *MetadataCreateBulk {
+	return &MetadataCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Metadata.
+func (c *MetadataClient) Update() *MetadataUpdate {
+	mutation := newMetadataMutation(c.config, OpUpdate)
+	return &MetadataUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MetadataClient) UpdateOne(m *Metadata) *MetadataUpdateOne {
+	mutation := newMetadataMutation(c.config, OpUpdateOne, withMetadata(m))
+	return &MetadataUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MetadataClient) UpdateOneID(id int) *MetadataUpdateOne {
+	mutation := newMetadataMutation(c.config, OpUpdateOne, withMetadataID(id))
+	return &MetadataUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Metadata.
+func (c *MetadataClient) Delete() *MetadataDelete {
+	mutation := newMetadataMutation(c.config, OpDelete)
+	return &MetadataDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *MetadataClient) DeleteOne(m *Metadata) *MetadataDeleteOne {
+	return c.DeleteOneID(m.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *MetadataClient) DeleteOneID(id int) *MetadataDeleteOne {
+	builder := c.Delete().Where(metadata.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MetadataDeleteOne{builder}
+}
+
+// Query returns a query builder for Metadata.
+func (c *MetadataClient) Query() *MetadataQuery {
+	return &MetadataQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a Metadata entity by its id.
+func (c *MetadataClient) Get(ctx context.Context, id int) (*Metadata, error) {
+	return c.Query().Where(metadata.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MetadataClient) GetX(ctx context.Context, id int) *Metadata {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryArtifact queries the artifact edge of a Metadata.
+func (c *MetadataClient) QueryArtifact(m *Metadata) *ArtifactQuery {
+	query := &ArtifactQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(metadata.Table, metadata.FieldID, id),
+			sqlgraph.To(artifact.Table, artifact.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, metadata.ArtifactTable, metadata.ArtifactColumn),
+		)
+		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MetadataClient) Hooks() []Hook {
+	return c.hooks.Metadata
 }

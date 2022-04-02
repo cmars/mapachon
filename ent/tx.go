@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Artifact is the client for interacting with the Artifact builders.
 	Artifact *ArtifactClient
+	// Metadata is the client for interacting with the Metadata builders.
+	Metadata *MetadataClient
 
 	// lazily loaded.
 	client     *Client
@@ -150,6 +152,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Artifact = NewArtifactClient(tx.config)
+	tx.Metadata = NewMetadataClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

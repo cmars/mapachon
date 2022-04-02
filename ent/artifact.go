@@ -21,8 +21,29 @@ type Artifact struct {
 	ArchivePath string `json:"archive_path,omitempty"`
 	// FileType holds the value of the "file_type" field.
 	FileType string `json:"file_type,omitempty"`
-	// ParsedContent holds the value of the "parsed_content" field.
-	ParsedContent string `json:"parsed_content,omitempty"`
+	// Content holds the value of the "content" field.
+	Content string `json:"content,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ArtifactQuery when eager-loading is set.
+	Edges ArtifactEdges `json:"edges"`
+}
+
+// ArtifactEdges holds the relations/edges for other nodes in the graph.
+type ArtifactEdges struct {
+	// Metadata holds the value of the metadata edge.
+	Metadata []*Metadata `json:"metadata,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// MetadataOrErr returns the Metadata value or an error if the edge
+// was not loaded in eager-loading.
+func (e ArtifactEdges) MetadataOrErr() ([]*Metadata, error) {
+	if e.loadedTypes[0] {
+		return e.Metadata, nil
+	}
+	return nil, &NotLoadedError{edge: "metadata"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -32,7 +53,7 @@ func (*Artifact) scanValues(columns []string) ([]interface{}, error) {
 		switch columns[i] {
 		case artifact.FieldID:
 			values[i] = new(sql.NullInt64)
-		case artifact.FieldFilePath, artifact.FieldArchivePath, artifact.FieldFileType, artifact.FieldParsedContent:
+		case artifact.FieldFilePath, artifact.FieldArchivePath, artifact.FieldFileType, artifact.FieldContent:
 			values[i] = new(sql.NullString)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Artifact", columns[i])
@@ -73,15 +94,20 @@ func (a *Artifact) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				a.FileType = value.String
 			}
-		case artifact.FieldParsedContent:
+		case artifact.FieldContent:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field parsed_content", values[i])
+				return fmt.Errorf("unexpected type %T for field content", values[i])
 			} else if value.Valid {
-				a.ParsedContent = value.String
+				a.Content = value.String
 			}
 		}
 	}
 	return nil
+}
+
+// QueryMetadata queries the "metadata" edge of the Artifact entity.
+func (a *Artifact) QueryMetadata() *MetadataQuery {
+	return (&ArtifactClient{config: a.config}).QueryMetadata(a)
 }
 
 // Update returns a builder for updating this Artifact.
@@ -113,8 +139,8 @@ func (a *Artifact) String() string {
 	builder.WriteString(a.ArchivePath)
 	builder.WriteString(", file_type=")
 	builder.WriteString(a.FileType)
-	builder.WriteString(", parsed_content=")
-	builder.WriteString(a.ParsedContent)
+	builder.WriteString(", content=")
+	builder.WriteString(a.Content)
 	builder.WriteByte(')')
 	return builder.String()
 }

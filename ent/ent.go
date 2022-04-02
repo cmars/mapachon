@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/cmars/mapachon/ent/artifact"
+	"github.com/cmars/mapachon/ent/metadata"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -30,6 +31,7 @@ type OrderFunc func(*sql.Selector)
 func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
 		artifact.Table: artifact.ValidColumn,
+		metadata.Table: metadata.ValidColumn,
 	}
 	check, ok := checks[table]
 	if !ok {

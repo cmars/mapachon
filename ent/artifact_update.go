@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/cmars/mapachon/ent/artifact"
+	"github.com/cmars/mapachon/ent/metadata"
 	"github.com/cmars/mapachon/ent/predicate"
 )
 
@@ -59,15 +60,51 @@ func (au *ArtifactUpdate) SetFileType(s string) *ArtifactUpdate {
 	return au
 }
 
-// SetParsedContent sets the "parsed_content" field.
-func (au *ArtifactUpdate) SetParsedContent(s string) *ArtifactUpdate {
-	au.mutation.SetParsedContent(s)
+// SetContent sets the "content" field.
+func (au *ArtifactUpdate) SetContent(s string) *ArtifactUpdate {
+	au.mutation.SetContent(s)
 	return au
+}
+
+// AddMetadatumIDs adds the "metadata" edge to the Metadata entity by IDs.
+func (au *ArtifactUpdate) AddMetadatumIDs(ids ...int) *ArtifactUpdate {
+	au.mutation.AddMetadatumIDs(ids...)
+	return au
+}
+
+// AddMetadata adds the "metadata" edges to the Metadata entity.
+func (au *ArtifactUpdate) AddMetadata(m ...*Metadata) *ArtifactUpdate {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return au.AddMetadatumIDs(ids...)
 }
 
 // Mutation returns the ArtifactMutation object of the builder.
 func (au *ArtifactUpdate) Mutation() *ArtifactMutation {
 	return au.mutation
+}
+
+// ClearMetadata clears all "metadata" edges to the Metadata entity.
+func (au *ArtifactUpdate) ClearMetadata() *ArtifactUpdate {
+	au.mutation.ClearMetadata()
+	return au
+}
+
+// RemoveMetadatumIDs removes the "metadata" edge to Metadata entities by IDs.
+func (au *ArtifactUpdate) RemoveMetadatumIDs(ids ...int) *ArtifactUpdate {
+	au.mutation.RemoveMetadatumIDs(ids...)
+	return au
+}
+
+// RemoveMetadata removes "metadata" edges to Metadata entities.
+func (au *ArtifactUpdate) RemoveMetadata(m ...*Metadata) *ArtifactUpdate {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return au.RemoveMetadatumIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -169,12 +206,66 @@ func (au *ArtifactUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: artifact.FieldFileType,
 		})
 	}
-	if value, ok := au.mutation.ParsedContent(); ok {
+	if value, ok := au.mutation.Content(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: artifact.FieldParsedContent,
+			Column: artifact.FieldContent,
 		})
+	}
+	if au.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   artifact.MetadataTable,
+			Columns: []string{artifact.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: metadata.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := au.mutation.RemovedMetadataIDs(); len(nodes) > 0 && !au.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   artifact.MetadataTable,
+			Columns: []string{artifact.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: metadata.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := au.mutation.MetadataIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   artifact.MetadataTable,
+			Columns: []string{artifact.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: metadata.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, au.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -227,15 +318,51 @@ func (auo *ArtifactUpdateOne) SetFileType(s string) *ArtifactUpdateOne {
 	return auo
 }
 
-// SetParsedContent sets the "parsed_content" field.
-func (auo *ArtifactUpdateOne) SetParsedContent(s string) *ArtifactUpdateOne {
-	auo.mutation.SetParsedContent(s)
+// SetContent sets the "content" field.
+func (auo *ArtifactUpdateOne) SetContent(s string) *ArtifactUpdateOne {
+	auo.mutation.SetContent(s)
 	return auo
+}
+
+// AddMetadatumIDs adds the "metadata" edge to the Metadata entity by IDs.
+func (auo *ArtifactUpdateOne) AddMetadatumIDs(ids ...int) *ArtifactUpdateOne {
+	auo.mutation.AddMetadatumIDs(ids...)
+	return auo
+}
+
+// AddMetadata adds the "metadata" edges to the Metadata entity.
+func (auo *ArtifactUpdateOne) AddMetadata(m ...*Metadata) *ArtifactUpdateOne {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return auo.AddMetadatumIDs(ids...)
 }
 
 // Mutation returns the ArtifactMutation object of the builder.
 func (auo *ArtifactUpdateOne) Mutation() *ArtifactMutation {
 	return auo.mutation
+}
+
+// ClearMetadata clears all "metadata" edges to the Metadata entity.
+func (auo *ArtifactUpdateOne) ClearMetadata() *ArtifactUpdateOne {
+	auo.mutation.ClearMetadata()
+	return auo
+}
+
+// RemoveMetadatumIDs removes the "metadata" edge to Metadata entities by IDs.
+func (auo *ArtifactUpdateOne) RemoveMetadatumIDs(ids ...int) *ArtifactUpdateOne {
+	auo.mutation.RemoveMetadatumIDs(ids...)
+	return auo
+}
+
+// RemoveMetadata removes "metadata" edges to Metadata entities.
+func (auo *ArtifactUpdateOne) RemoveMetadata(m ...*Metadata) *ArtifactUpdateOne {
+	ids := make([]int, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return auo.RemoveMetadatumIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -361,12 +488,66 @@ func (auo *ArtifactUpdateOne) sqlSave(ctx context.Context) (_node *Artifact, err
 			Column: artifact.FieldFileType,
 		})
 	}
-	if value, ok := auo.mutation.ParsedContent(); ok {
+	if value, ok := auo.mutation.Content(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: artifact.FieldParsedContent,
+			Column: artifact.FieldContent,
 		})
+	}
+	if auo.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   artifact.MetadataTable,
+			Columns: []string{artifact.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: metadata.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := auo.mutation.RemovedMetadataIDs(); len(nodes) > 0 && !auo.mutation.MetadataCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   artifact.MetadataTable,
+			Columns: []string{artifact.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: metadata.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := auo.mutation.MetadataIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   artifact.MetadataTable,
+			Columns: []string{artifact.MetadataColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: metadata.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Artifact{config: auo.config}
 	_spec.Assign = _node.assignValues
