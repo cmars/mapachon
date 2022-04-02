@@ -8,4 +8,12 @@ services:
     deploy:
       restart_policy:
         condition: always
-
+  mapachon:
+    build:
+      context: .
+    command: /mapachon -tika http://tika:9998 -out /out/dump.db /dump
+    depends_on:
+      - tika
+    volumes:
+      - ${DUMP_INPUT:?missing required DUMP_INPUT}:/dump
+      - ${DUMP_OUTPUT:-.}:/out
