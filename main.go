@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -22,18 +23,18 @@ var (
 
 func main() {
 	flag.Parse()
+	if len(flag.Args()) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: <path>")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 
 	ctx := context.Background()
-	var root string
-	var err error
-	if len(flag.Args()) > 0 {
-		root, err = filepath.Abs(flag.Arg(0))
-	} else {
-		root, err = os.Getwd()
-		if err != nil {
-			log.Fatal(err)
-		}
+	root, err := filepath.Abs(flag.Arg(0))
+	if err != nil {
+		log.Fatal(err)
 	}
+
 	log.Println("extracting from", root)
 	cl := tika.NewClient(&http.Client{}, *tikaURL)
 	db, err := ent.Open("sqlite3", *out+"?_fk=1") //"file:ent?mode=memory&cache=shared&_fk=1")
