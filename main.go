@@ -37,7 +37,7 @@ func main() {
 
 	log.Println("extracting from", root)
 	cl := tika.NewClient(&http.Client{}, *tikaURL)
-	db, err := ent.Open("sqlite3", *out+"?_fk=1") //"file:ent?mode=memory&cache=shared&_fk=1")
+	db, err := ent.Open("sqlite3", *out+"?_fk=1")
 	if err != nil {
 		log.Fatal(err)
 	}
